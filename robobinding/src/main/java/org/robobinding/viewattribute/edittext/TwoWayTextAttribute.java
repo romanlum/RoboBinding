@@ -21,9 +21,19 @@ import org.robobinding.viewattribute.AbstractPropertyViewAttribute;
 
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.view.View.OnFocusChangeListener;
 import android.widget.EditText;
+
+import com.google.common.base.Defaults;
+import com.google.common.collect.ImmutableMap;
+
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.util.Map;
+
+import static org.apache.commons.lang3.ClassUtils.primitiveToWrapper;
 
 /**
  *
@@ -36,38 +46,44 @@ public class TwoWayTextAttribute extends AbstractMultiTypePropertyViewAttribute<
 
     @Override
     protected AbstractPropertyViewAttribute<EditText, ?> createPropertyViewAttribute(Class<?> propertyType) {
-	if (String.class.isAssignableFrom(propertyType)) {
-	    return createNewStringAttribute();
-	} else if (CharSequence.class.isAssignableFrom(propertyType)) {
-	    return createNewCharSequenceAttribute();
-	}
 
-	return null;
+        GenericTwoWayTextAttribute attribute=null;
+        if (String.class.isAssignableFrom(propertyType)) {
+            attribute=new GenericTwoWayTextAttribute<String>(String.class);
+        } else if (CharSequence.class.isAssignableFrom(propertyType)) {
+            attribute=new GenericTwoWayTextAttribute<CharSequence>(CharSequence.class);
+        } else if(long.class.isAssignableFrom(propertyType)){
+            attribute=new GenericTwoWayTextAttribute<Long>(Long.class);
+        } else if(float.class.isAssignableFrom(propertyType)){
+            attribute=new GenericTwoWayTextAttribute<Float>(Float.class);
+        } else if(int.class.isAssignableFrom(propertyType)){
+        attribute=new GenericTwoWayTextAttribute<Integer>(Integer.class);
     }
+        if(attribute!=null){
+            attribute.setValueCommitMode(valueCommitMode);
+            return attribute;
+        }
 
-    private TwoWayStringTextAttribute createNewStringAttribute() {
-	TwoWayStringTextAttribute stringTextAttribute = new TwoWayStringTextAttribute();
-	stringTextAttribute.setValueCommitMode(valueCommitMode);
-	return stringTextAttribute;
-    }
-
-    private TwoWayCharSequenceTextAttribute createNewCharSequenceAttribute() {
-	TwoWayCharSequenceTextAttribute charSequenceTextAttribute = new TwoWayCharSequenceTextAttribute();
-	charSequenceTextAttribute.setValueCommitMode(valueCommitMode);
-	return charSequenceTextAttribute;
+        return null;
     }
 
     void setValueCommitMode(ValueCommitMode valueCommitMode) {
 	this.valueCommitMode = valueCommitMode;
     }
 
-    private abstract static class AbstractTwoWayCharSequenceTextAttribute<PropertyType extends CharSequence> extends
+    private static class GenericTwoWayTextAttribute<PropertyType> extends
 	    AbstractPropertyViewAttribute<EditText, PropertyType> {
 	private ValueCommitMode valueCommitMode;
 
-	@Override
+    private Class<PropertyType> propertyTypeClass;
+
+    public GenericTwoWayTextAttribute(Class<PropertyType> clazz) {
+       propertyTypeClass=clazz;
+    }
+
+        @Override
 	protected void valueModelUpdated(PropertyType newValue) {
-	    view.setText(newValue);
+	    view.setText(String.valueOf(newValue));
 	}
 
 	@Override
@@ -104,20 +120,45 @@ public class TwoWayTextAttribute extends AbstractMultiTypePropertyViewAttribute<
 	    this.valueCommitMode = valueCommitMode;
 	}
 
-	protected abstract void updateValueModel(ValueModel<PropertyType> valueModel, CharSequence charSequence);
+	protected void updateValueModel(ValueModel<PropertyType> valueModel, CharSequence charSequence){
+        try {
+            if(charSequence.length()==0)
+            {
+                valueModel.setValue(getDefault(propertyTypeClass));
+                return;
+            }
+
+            Method method=propertyTypeClass.getMethod("valueOf",String.class);
+            Object result=method.invoke(null,charSequence.toString());
+            valueModel.setValue((PropertyType)result);
+        } catch (Exception e) {
+            Log.e ("ROBOBINDING","Error setting ValueModel",e);
+            valueModel.setValue(getDefault(propertyTypeClass));
+        }
     }
 
-    static class TwoWayStringTextAttribute extends AbstractTwoWayCharSequenceTextAttribute<String> {
-	@Override
-	protected void updateValueModel(ValueModel<String> valueModel, CharSequence charSequence) {
-	    valueModel.setValue(charSequence.toString());
-	}
+        private <T> T getDefault(Class<T> type){
+
+            if(WRAPPERS_TO_PRIMITIVES.containsKey(type))
+            {
+                Class<?> primitiveType=WRAPPERS_TO_PRIMITIVES.get(propertyTypeClass);
+                return (T) Defaults.defaultValue(primitiveType);
+            }
+            return (T) Defaults.defaultValue(propertyTypeClass);
+        }
+
+    private static final Map<Class<?>, Class<?>> WRAPPERS_TO_PRIMITIVES
+            = new ImmutableMap.Builder<Class<?>, Class<?>>()
+            .put(Boolean.class, boolean.class)
+            .put(Byte.class, byte.class)
+            .put(Character.class, char.class)
+            .put(Double.class, double.class)
+            .put(Float.class, float.class)
+            .put(Integer.class, int.class)
+            .put(Long.class, long.class)
+            .put(Short.class, short.class)
+            .put(Void.class, void.class)
+            .build();
     }
 
-    static class TwoWayCharSequenceTextAttribute extends AbstractTwoWayCharSequenceTextAttribute<CharSequence> {
-	@Override
-	protected void updateValueModel(ValueModel<CharSequence> valueModel, CharSequence charSequence) {
-	    valueModel.setValue(charSequence);
-	}
-    }
 }

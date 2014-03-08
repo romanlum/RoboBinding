@@ -30,4 +30,5 @@ public class TextAttribute extends AbstractReadOnlyPropertyViewAttribute<TextVie
     protected void valueModelUpdated(CharSequence newValue) {
 	view.setText(newValue);
     }
+
 }

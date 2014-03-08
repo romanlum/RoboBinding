@@ -30,7 +30,6 @@ public class TextViewAttributeMapper implements BindingAttributeMapper<TextView>
     @Override
     public void mapBindingAttributes(BindingAttributeMappings<TextView> mappings) {
 	mappings.mapPropertyAttribute(TextAttribute.class, "text");
-
 	mappings.mapPropertyAttribute(TextColorAttribute.class, "textColor");
     }
 }
