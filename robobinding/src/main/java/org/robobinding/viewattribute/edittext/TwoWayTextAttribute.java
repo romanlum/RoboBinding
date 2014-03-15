@@ -57,8 +57,15 @@ public class TwoWayTextAttribute extends AbstractMultiTypePropertyViewAttribute<
         } else if(float.class.isAssignableFrom(propertyType)){
             attribute=new GenericTwoWayTextAttribute<Float>(Float.class);
         } else if(int.class.isAssignableFrom(propertyType)){
-        attribute=new GenericTwoWayTextAttribute<Integer>(Integer.class);
-    }
+            attribute=new GenericTwoWayTextAttribute<Integer>(Integer.class);
+        }else if(Long.class.isAssignableFrom(propertyType)){
+            attribute=new GenericTwoWayTextAttribute<Long>(Long.class);
+        } else if(Float.class.isAssignableFrom(propertyType)){
+            attribute=new GenericTwoWayTextAttribute<Float>(Float.class);
+        } else if(Integer.class.isAssignableFrom(propertyType)){
+            attribute=new GenericTwoWayTextAttribute<Integer>(Integer.class);
+        }
+
         if(attribute!=null){
             attribute.setValueCommitMode(valueCommitMode);
             return attribute;
@@ -83,7 +90,10 @@ public class TwoWayTextAttribute extends AbstractMultiTypePropertyViewAttribute<
 
         @Override
 	protected void valueModelUpdated(PropertyType newValue) {
-	    view.setText(String.valueOf(newValue));
+        if(newValue==null)
+            view.setText("");
+        else
+	        view.setText(String.valueOf(newValue));
 	}
 
 	@Override
@@ -127,7 +137,10 @@ public class TwoWayTextAttribute extends AbstractMultiTypePropertyViewAttribute<
                 valueModel.setValue(getDefault(propertyTypeClass));
                 return;
             }
-
+            if(propertyTypeClass.isAssignableFrom(String.class)){
+                valueModel.setValue((PropertyType) charSequence.toString());
+                return;
+            }
             Method method=propertyTypeClass.getMethod("valueOf",String.class);
             Object result=method.invoke(null,charSequence.toString());
             valueModel.setValue((PropertyType)result);
